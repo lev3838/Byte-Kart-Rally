@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Byte Kart Rally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#fff6d6;--ink:#1b1f3b;--card:#ffffff;--red:#ff4d4d;--yel:#ffd23f;--grn:#1fa75a;--mut:#5b6080;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14172e;--ink:#fff6d6;--card:#222654;--mut:#b5b9dd;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14172e;--ink:#fff6d6;--card:#222654;--mut:#b5b9dd;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;font-weight:600}
+.wrap{max-width:860px;margin:0 auto;padding:14px}
+h1{font-family:"Lilita One",Impact,sans-serif;font-weight:400;font-size:clamp(28px,6vw,44px);margin:4px 0 10px;letter-spacing:.5px;color:var(--red);text-shadow:2px 2px 0 var(--yel)}
+.hud{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.pill{background:var(--card);border:3px solid var(--ink);border-radius:999px;padding:4px 14px;font-weight:800}
+.track{flex:1;min-width:140px;height:18px;border:3px solid var(--ink);border-radius:999px;background:var(--card);position:relative}
+.track i{position:absolute;top:-9px;font-style:normal;font-size:20px;transition:left .5s;transform:translateX(-50%)}
+.q{background:var(--card);border:4px solid var(--ink);border-radius:18px;padding:10px 16px;margin-bottom:10px;font-size:clamp(17px,3.4vw,24px);font-weight:800;min-height:3.2em;display:flex;align-items:center}
+.stage{position:relative;border:4px solid var(--ink);border-radius:18px;overflow:hidden;background:#6ec6ff;touch-action:manipulation}
+canvas{display:block;width:100%;height:auto}
+.ov{position:absolute;inset:0;background:rgba(20,23,46,.82);color:#fff6d6;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;gap:10px;overflow:auto}
+.ov[hidden]{display:none}
+.ov h2{font-family:"Lilita One",Impact,sans-serif;font-weight:400;font-size:clamp(26px,6vw,42px);margin:0;color:var(--yel)}
+.ov p{margin:0;max-width:34em}
+button{font:inherit;font-weight:800;cursor:pointer}
+.go{background:var(--red);color:#fff;border:3px solid #fff6d6;border-radius:14px;padding:10px 26px;font-size:20px;font-family:"Lilita One",sans-serif;box-shadow:0 5px 0 #a02020}
+.go:active{transform:translateY(4px);box-shadow:0 1px 0 #a02020}
+.go.alt{background:var(--grn);box-shadow:0 5px 0 #0d6b38}
+details{max-width:560px;width:100%;text-align:left;background:rgba(255,255,255,.1);border-radius:12px;padding:6px 12px}
+summary{cursor:pointer;font-weight:800}
+.words{columns:2;column-gap:18px;font-size:14px;margin-top:6px}
+.words div{break-inside:avoid;margin-bottom:4px}
+.miss{max-height:140px;overflow:auto;text-align:left;font-size:14px;width:100%;max-width:560px}
+.ctl{display:flex;gap:10px;margin-top:10px}
+.ctl button{flex:1;padding:14px;font-size:26px;background:var(--yel);color:#1b1f3b;border:4px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink)}
+.ctl button:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.fb{margin-top:10px;min-height:3.4em;border-radius:14px;padding:8px 14px;border:3px solid var(--ink);background:var(--card);font-weight:800}
+.fb.ok{background:#b8f2cf;color:#0b3d20}.fb.no{background:#ffc9c9;color:#5b0f0f}
+.tip{color:var(--mut);font-size:14px;margin:8px 2px 0}
+:focus-visible{outline:4px solid var(--red);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Byte Kart Rally</h1>
+<div class="hud">
+  <span class="pill" id="gate">Gate 1/20</span>
+  <span class="pill">⭐ <span id="score">0</span></span>
+  <span class="pill">🔥 <span id="streak">0</span></span>
+  <div class="track" aria-hidden="true"><i id="mk" style="left:2%">🏎️</i><i style="left:99%">🏁</i></div>
+</div>
+<div class="q" id="q" aria-live="polite">Get ready to race!</div>
+<div class="stage">
+  <canvas id="cv" width="800" height="500" aria-label="Kart racing game"></canvas>
+  <div class="ov" id="start">
+    <h2>Drive through the right word!</h2>
+    <p>Read the clue, then steer into the gate with the matching word. Right answers give a boost. Wrong ones spin you out.</p>
+    <details><summary>Study the 20 words first</summary><div class="words" id="wl"></div></details>
+    <button class="go" id="goBtn">Start engine</button>
+  </div>
+  <div class="ov" id="end" hidden>
+    <h2 id="endT">Finish line!</h2>
+    <p id="endS"></p>
+    <div class="miss" id="missL"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <button class="go alt" id="again">Race again</button>
+      <button class="go" id="prac" hidden>Practice missed words</button>
+    </div>
+  </div>
+</div>
+<div class="ctl">
+  <button id="bl" aria-label="Steer left">◀ Left</button>
+  <button id="br" aria-label="Steer right">Right ▶</button>
+</div>
+<div class="fb" id="fb" aria-live="polite">Steer with ← → or A and D, or tap the buttons or the left and right side of the road.</div>
+<p class="tip">Tip: you have a few seconds before the gates arrive. Read the clue first.</p>
+</div>
+<script>
+const WORDS=[["binary","A number system using 0 and 1."],["bit","The smallest unit of computer information."],["byte","A group of eight bits."],["computer","A machine that processes information."],["computer science","The study of computers."],["digital","Information used by computers."],["electricity","Energy that powers devices."],["information","Facts or details."],["keyboard","A device used for typing."],["letter","A character used in words."],["number","A symbol showing an amount."],["off","A stopped or inactive state."],["on","A working or active state."],["one","The number 1."],["pattern","Something that repeats."],["store","To save information."],["switch","A device that turns things on or off."],["symbol","A character that represents something."],["technology","Tools and devices that solve problems."],["zero","The number 0."]];
+const W=800,H=500,HY=190;
+const cv=document.getElementById('cv'),c=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+$('wl').innerHTML=WORDS.map(w=>`<div><b>${w[0]}</b>: ${w[1]}</div>`).join('');
+let S=null,order=[],opts=[],t=0,off=0,idle=true,AC=null,parts=[];
+const trees=[];for(let i=0;i<12;i++)trees.push({s:i%2?1:-1,d:i/12});
+const clouds=[{x:100,y:40,s:1},{x:420,y:70,s:.8},{x:680,y:30,s:1.2}];
+function beep(f,d,ty){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=ty||'square';o.frequency.value=f;g.gain.value=.06;o.connect(g);g.connect(AC.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d)}catch(e){}}
+function newGame(list){
+  order=shuf(list);
+  S={i:0,score:0,streak:0,missed:[],lane:1,kx:1,d:0,st:'run',spin:0,boost:0,timer:0,res:null,total:order.length};
+  $('score').textContent=0;$('streak').textContent=0;
+  $('start').hidden=true;$('end').hidden=true;idle=false;nextQ();
+}
+function nextQ(){
+  const [w,d]=order[S.i];
+  const others=shuf(WORDS.filter(x=>x[0]!==w)).slice(0,2).map(x=>x[0]);
+  opts=shuf([w,...others]);S.ans=opts.indexOf(w);S.d=0;S.st='run';S.res=null;
+  $('q').textContent='Which word means: '+d.replace(/\.$/,'')+'?';
+  $('gate').textContent='Gate '+(S.i+1)+'/'+S.total;
+  $('mk').style.left=(2+97*S.i/S.total)+'%';
+}
+function resolve(){
+  const [w,d]=order[S.i];const ok=S.lane===S.ans;S.res=ok?'ok':'no';S.st='fb';S.timer=0;
+  const fb=$('fb');
+  if(ok){S.score+=10+S.streak*2;S.streak++;S.boost=1;beep(660,.12);setTimeout(()=>beep(990,.18),110);
+    for(let i=0;i<40;i++)parts.push({x:W/2+(S.lane-1)*240,y:380,vx:(Math.random()-.5)*10,vy:-Math.random()*9-2,l:1,c:['#ffd23f','#ff4d4d','#3ddc84','#fff'][i%4]});
+    fb.className='fb ok';fb.textContent='Nice! '+w+' means: '+d}
+  else{S.streak=0;S.spin=1;S.missed.push(order[S.i]);beep(150,.4,'sawtooth');
+    fb.className='fb no';fb.textContent='Oops! The answer is "'+w+'": '+d}
+  $('score').textContent=S.score;$('streak').textContent=S.streak;
+}
+function finish(){
+  idle=true;S.st='done';$('end').hidden=false;
+  const n=S.total-S.missed.length;
+  $('endT').textContent=S.missed.length===0?'Perfect race! 🏆':'Finish line! 🏁';
+  $('endS').textContent='You got '+n+' of '+S.total+' right and scored '+S.score+' points.';
+  $('missL').innerHTML=S.missed.length?'<b>Words to practice:</b>'+S.missed.map(m=>`<div><b>${m[0]}</b>: ${m[1]}</div>`).join(''):'';
+  $('prac').hidden=!S.missed.length;$('prac').onclick=()=>newGame(S.missed.slice());
+  $('q').textContent='Race complete!';
+}
+function move(dx){if(!S||idle||S.st!=='run')return;S.lane=Math.max(0,Math.min(2,S.lane+dx));beep(300+S.lane*80,.05)}
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a'){move(-1);e.preventDefault()}if(k==='arrowright'||k==='d'){move(1);e.preventDefault()}});
+$('bl').onclick=()=>move(-1);$('br').onclick=()=>move(1);
+cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();move(e.clientX-r.left<r.width/2?-1:1)});
+$('goBtn').onclick=()=>newGame(WORDS);$('again').onclick=()=>newGame(WORDS);
+
+function update(dt){
+  t+=dt;const sp=idle?0.7:(S.boost>0?1.9:1)*(S.spin>0?.5:1);
+  off+=dt*sp*6;
+  const adv=x=>x+dt*sp*(0.05+x*0.5);
+  trees.forEach(tr=>{tr.d=adv(tr.d);if(tr.d>1.15)tr.d=0});
+  clouds.forEach(cl=>{cl.x+=dt*8;if(cl.x>900)cl.x=-120});
+  parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.4;p.l-=dt*.8});parts=parts.filter(p=>p.l>0);
+  if(!S||idle)return;
+  S.boost=Math.max(0,S.boost-dt*.8);S.spin=Math.max(0,S.spin-dt*1.1);
+  S.kx=lerp(S.kx,S.lane,Math.min(1,dt*10));
+  if(S.st==='run'){S.d=adv(S.d);if(S.d>=.88)resolve()}
+  else if(S.st==='fb'){S.d=adv(S.d);S.timer+=dt;
+    if(S.timer>2.4){S.i++;if(S.i>=S.total)finish();else nextQ()}}
+}
+const roadW=p=>lerp(30,430,p);
+function drawSky(){
+  const g=c.createLinearGradient(0,0,0,HY);g.addColorStop(0,'#4aa8f0');g.addColorStop(1,'#bfe8ff');c.fillStyle=g;c.fillRect(0,0,W,HY+2);
+  c.fillStyle='#ffe066';c.beginPath();c.arc(640,70,34,0,7);c.fill();
+  c.fillStyle='rgba(255,255,255,.9)';
+  clouds.forEach(cl=>{c.beginPath();c.ellipse(cl.x,cl.y,46*cl.s,16*cl.s,0,0,7);c.ellipse(cl.x+26*cl.s,cl.y-10*cl.s,28*cl.s,16*cl.s,0,0,7);c.fill()});
+  c.fillStyle='#7bc47f';c.beginPath();c.moveTo(0,HY);
+  for(let x=0;x<=W;x+=40)c.lineTo(x,HY-30-Math.sin(x*.013)*22-Math.cos(x*.03)*8);
+  c.lineTo(W,HY);c.fill();
+}
+function drawRoad(){
+  for(let y=HY;y<H;y+=2){
+    const p=(y-HY)/(H-HY),z=1/(p+.03),b=Math.floor(z*.9+off)&1,w=roadW(p),cx=W/2;
+    c.fillStyle=b?'#4cc16a':'#42b25d';c.fillRect(0,y,W,2);
+    c.fillStyle=b?'#ff4d4d':'#ffffff';c.fillRect(cx-w*1.08,y,w*2.16,2);
+    c.fillStyle=b?'#4a4e69':'#434763';c.fillRect(cx-w,y,w*2,2);
+    if(b){c.fillStyle='#fff6d6';const lw=Math.max(1,w*.018);c.fillRect(cx-w*.31-lw/2,y,lw,2);c.fillRect(cx+w*.31-lw/2,y,lw,2)}
+  }
+}
+function drawTree(tr){
+  const p=tr.d;if(p<.02)return;const y=HY+(H-HY)*p,w=roadW(p),x=W/2+tr.s*w*1.35,s=p*1.3+.1;
+  c.fillStyle='#7a4a21';c.fillRect(x-5*s,y-34*s,10*s,34*s);
+  c.fillStyle='#1f9d55';c.beginPath();c.arc(x,y-50*s,26*s,0,7);c.fill();
+  c.fillStyle='#2fc16e';c.beginPath();c.arc(x-7*s,y-56*s,14*s,0,7);c.fill();
+}
+function drawGate(idx,p){
+  const y=HY+(H-HY)*p,w=roadW(p),x=W/2+(idx-1)*w*.62,gw=w*.5,gh=gw*.62,s=gw/150;
+  let col='#ffd23f';
+  if(S.res){if(idx===S.ans)col='#3ddc84';else if(idx===S.lane)col='#ff6b6b';else col='#c9c9d6'}
+  c.fillStyle='#1b1f3b';c.fillRect(x-gw/2,y-gh-8*s,6*s,gh+8*s);c.fillRect(x+gw/2-6*s,y-gh-8*s,6*s,gh+8*s);
+  c.fillStyle=col;c.strokeStyle='#1b1f3b';c.lineWidth=Math.max(2,4*s);
+  c.beginPath();c.roundRect(x-gw/2-4*s,y-gh*1.35,gw+8*s,gh*.75,12*s);c.fill();c.stroke();
+  let fs=34*s;c.font=`400 ${fs}px "Lilita One",Impact,sans-serif`;
+  const tw=c.measureText(opts[idx]).width,mx=gw*.92;if(tw>mx){fs*=mx/tw;c.font=`400 ${fs}px "Lilita One",Impact,sans-serif`}
+  c.fillStyle='#1b1f3b';c.textAlign='center';c.textBaseline='middle';c.fillText(opts[idx],x,y-gh*.975);
+}
+function drawKart(x,y,spin,boost){
+  c.save();c.translate(x,y+Math.sin(t*22)*(idle?0:1.5));
+  c.rotate(spin>0?spin*Math.PI*4:0);
+  const tilt=S?(S.lane-S.kx)*.25:0;c.rotate(tilt);
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,34,62,12,0,0,7);c.fill();
+  if(boost>0){c.fillStyle='#ffd23f';c.beginPath();c.moveTo(-14,34);c.lineTo(0,34+50*boost+Math.random()*14);c.lineTo(14,34);c.fill();
+    c.fillStyle='#ff4d4d';c.beginPath();c.moveTo(-7,34);c.lineTo(0,34+28*boost);c.lineTo(7,34);c.fill()}
+  c.fillStyle='#1b1f3b';c.fillRect(-58,6,22,34);c.fillRect(36,6,22,34);
+  c.fillStyle='#555a7a';const sh=Math.floor(t*30)&1?3:0;c.fillRect(-58,10+sh,22,6);c.fillRect(36,10+sh,22,6);
+  c.fillStyle='#ff4d4d';c.beginPath();c.roundRect(-44,-6,88,44,14);c.fill();
+  c.fillStyle='#1b1f3b';c.fillRect(-50,40,100,6);c.fillRect(-46,-14,92,8);
+  c.fillStyle='#ffd23f';c.fillRect(-10,-6,20,38);
+  c.fillStyle='#3a7bd5';c.beginPath();c.arc(0,-22,19,0,7);c.fill();
+  c.fillStyle='#1b1f3b';c.beginPath();c.roundRect(-14,-28,28,11,5);c.fill();
+  c.fillStyle='#fff';c.fillRect(-9,-25,6,4);
+  c.restore();
+}
+function draw(){
+  drawSky();drawRoad();
+  trees.slice().sort((a,b)=>a.d-b.d).forEach(drawTree);
+  if(S&&!idle&&S.d>0.03&&S.d<1.1){for(let i=0;i<3;i++)drawGate(i,Math.min(S.d,1.1))}
+  const kp=.88,kx=W/2+((S?S.kx:1)-1)*roadW(kp)*.62;
+  if(S&&S.boost>0){c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=3;for(let i=0;i<14;i++){const a=(i/14)*Math.PI*2,r=(t*500+i*70)%380+60;c.beginPath();c.moveTo(W/2+Math.cos(a)*r,300+Math.sin(a)*r*.6);c.lineTo(W/2+Math.cos(a)*(r+40),300+Math.sin(a)*(r+40)*.6);c.stroke()}}
+  drawKart(kx,430,S?S.spin:0,S?S.boost:0);
+  parts.forEach(p=>{c.globalAlpha=Math.max(0,p.l);c.fillStyle=p.c;c.fillRect(p.x,p.y,7,7)});c.globalAlpha=1;
+}
+let last=performance.now();
+(function loop(n){const dt=Math.min(.05,(n-last)/1000);last=n;update(dt);draw();requestAnimationFrame(loop)})(last);
+</script>
+</body>
+</html>
